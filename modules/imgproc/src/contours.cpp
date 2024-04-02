@@ -1853,32 +1853,89 @@ void cv::findContours( InputArray _image, OutputArrayOfArrays _contours,
     int i, total = (int)all_contours.size();
     _contours.create(total, 1, 0, -1, true);
     SeqIterator<CvSeq*> it = all_contours.begin();
+
+    // for( i = 0; i < total; i++, ++it )
+    // {
+    //     CvSeq* c = *it;
+    //     ((CvContour*)c)->color = (int)i;
+    //     _contours.create((int)c->total, 1, CV_32SC2, i, true);
+    //     Mat ci = _contours.getMat(i);
+    //     CV_Assert( ci.isContinuous() );
+    //     cvCvtSeqToArray(c, ci.ptr());
+    // }
+
     for( i = 0; i < total; i++, ++it )
     {
         CvSeq* c = *it;
         ((CvContour*)c)->color = (int)i;
         _contours.create((int)c->total, 1, CV_32SC2, i, true);
-        Mat ci = _contours.getMat(i);
-        CV_Assert( ci.isContinuous() );
-        cvCvtSeqToArray(c, ci.ptr());
-    }
+        Mat contour = _contours.getMat(i);
+        cvCvtSeqToArray(c, contour.ptr());
+        auto rect = cv::boundingRect(contour);
 
-    if( _hierarchy.needed() )
-    {
-        _hierarchy.create(1, total, CV_32SC4, -1, true);
-        Vec4i* hierarchy = _hierarchy.getMat().ptr<Vec4i>();
+        // Escribir el rectángulo dentro de los primeros 8 índices de la matriz
 
-        it = all_contours.begin();
-        for( i = 0; i < total; i++, ++it )
+        // Se divide cada int en dos uint8 para evitar wrapping
+        // Primer uint8 (xa): cuántas veces 256 (uint8) divide el int
+        // Segundo uint8 (xb): resto de la división
+        // Entonces, cada 2 índices se almacena un int
+
+        // El int se restaura mediante la fórmula:
+        // x = (xa * 256) + xb
+
+        if (rect.width < 10 || rect.height < 10)
         {
-            CvSeq* c = *it;
-            int h_next = c->h_next ? ((CvContour*)c->h_next)->color : -1;
-            int h_prev = c->h_prev ? ((CvContour*)c->h_prev)->color : -1;
-            int v_next = c->v_next ? ((CvContour*)c->v_next)->color : -1;
-            int v_prev = c->v_prev ? ((CvContour*)c->v_prev)->color : -1;
-            hierarchy[i] = Vec4i(h_next, h_prev, v_next, v_prev);
+            // x
+            contour.data[0] = 0;
+            contour.data[1] = 0;
+
+            // y
+            contour.data[2] = 0;
+            contour.data[3] = 0;
+
+            // width
+            contour.data[4] = 0;
+            contour.data[5] = 0;
+
+            // height
+            contour.data[6] = 0;
+            contour.data[7] = 0;
+            continue;
         }
+
+        // x
+        contour.data[0] = std::floor(rect.x / 256);
+        contour.data[1] = rect.x - (256 * contour.data[0]);
+
+        // y
+        contour.data[2] = std::floor(rect.y / 256);
+        contour.data[3] = rect.y - (256 * contour.data[2]);
+
+        // width
+        contour.data[4] = std::floor(rect.width / 256);
+        contour.data[5] = rect.width - (256 * contour.data[4]);
+
+        // height
+        contour.data[6] = std::floor(rect.height / 256);
+        contour.data[7] = rect.height - (256 * contour.data[6]);
     }
+
+    // if( _hierarchy.needed() )
+    // {
+    //     _hierarchy.create(1, total, CV_32SC4, -1, true);
+    //     Vec4i* hierarchy = _hierarchy.getMat().ptr<Vec4i>();
+
+    //     it = all_contours.begin();
+    //     for( i = 0; i < total; i++, ++it )
+    //     {
+    //         CvSeq* c = *it;
+    //         int h_next = c->h_next ? ((CvContour*)c->h_next)->color : -1;
+    //         int h_prev = c->h_prev ? ((CvContour*)c->h_prev)->color : -1;
+    //         int v_next = c->v_next ? ((CvContour*)c->v_next)->color : -1;
+    //         int v_prev = c->v_prev ? ((CvContour*)c->v_prev)->color : -1;
+    //         hierarchy[i] = Vec4i(h_next, h_prev, v_next, v_prev);
+    //     }
+    // }
 }
 
 void cv::findContours( InputArray _image, OutputArrayOfArrays _contours,
