@@ -19,6 +19,8 @@ imgproc = {
         'cvtColor', # keep
         'findContours', # keep
         'getPerspectiveTransform', # keep
+        'getRotationMatrix2D', # keep
+        'warpAffine', # keep
         'line', # keep
         'rectangle', # keep
         'resize', # keep
